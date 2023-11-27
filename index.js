@@ -48,6 +48,11 @@ async function run() {
             const result = await usercollection.insertOne(user)
             res.send(result)
         })
+        
+        app.get('/users', async(req,res)=>{
+            const result = await usercollection.find().toArray()
+            res.send(result)
+        })
 
         app.get('/users/:email', async (req, res) => {
             const email = req.params.email
@@ -72,6 +77,17 @@ async function run() {
             const result = await usercollection.updateOne(filter, updateDoc)
             res.send(result)
         })
+        app.patch('/users/admin/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const updateDoc = {
+              $set: {
+                role: `admin`
+              },
+            };
+            const result = await usercollection.updateOne(filter, updateDoc)
+            res.send(result)
+          })
 
         // meal realated 
         // app.get('/meals', async (req, res) => {
@@ -107,6 +123,26 @@ async function run() {
             res.send(result)
         })
 
+        app.patch('/meals/:id', async (req, res) => {
+            const item = req.body
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const updateDoc = {
+                $set: {
+                    reviews: item.reviews,
+                },
+            };
+            const result = await mealcollection.updateOne(filter, updateDoc)
+            console.log('upco', result)
+            res.send(result)
+        })
+        app.delete('/meals/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await mealcollection.deleteOne(query)
+            res.send(result)
+        })
+
         // upcoming meals collection
         app.post('/upcomings', async (req, res) => {
             const user = req.body
@@ -133,18 +169,32 @@ async function run() {
                 },
             };
             const result = await upcommingcollection.updateOne(filter, updateDoc)
-            console.log('upco',result)
+            console.log('upco', result)
             res.send(result)
         })
 
         //update like count
-        app.patch('/meals/:id', async (req, res) => {
+        //after click on the like, like count of mealconnection will increase
+        app.patch('/likesmeals/:id', async (req, res) => {
             const item = req.body
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) }
             const updateDoc = {
                 $set: {
                     likes: item.likes,
+                },
+            };
+            const result = await mealcollection.updateOne(filter, updateDoc)
+            res.send(result)
+        })
+
+        //after click on the review, review count of mealconnection will increase
+        app.patch('/reviewmeals/:id', async (req, res) => {
+            const item = req.body
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const updateDoc = {
+                $set: {
                     reviews: item.reviews
                 },
             };
@@ -152,11 +202,29 @@ async function run() {
             res.send(result)
         })
 
+        //after click on the like, like count of reviewcollection will increase
+        app.patch('/likesreview/:id', async (req, res) => {
+            const item = req.body
+            console.log('koyta', item)
+            const id = req.params.id;
+            const filter = { meal_id: id }
+            const updateDoc = {
+                $set: {
+                    meal_likes: item.likes,
+                },
+            };
+
+            const result = await reviewcollection.updateMany(filter, updateDoc)
+            console.log("dekhi", result)
+            res.send(result)
+        })
+
         // request meal api
+        //after click on the like, like count of requestcollection will increase
         app.patch('/reqmeals/:id', async (req, res) => {
             const item = req.body
             const id = req.params.id;
-            const filter = { item_id : id}
+            const filter = { item_id: id }
             const updateDoc = {
                 $set: {
                     item_likes: item.likes,
@@ -196,12 +264,17 @@ async function run() {
 
         app.get('/reviews/:meal_id', async (req, res) => {
             const id = req.params.meal_id
-            console.log(id)
             const query = { meal_id: id };
-            console.log(query)
             const result = await reviewcollection.find(query).toArray()
-            res.send(result)    
+            res.send(result)
             console.log(result)
+        })
+
+        app.delete('/reviews/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await reviewcollection.deleteOne(query)
+            res.send(result)
         })
 
         //payment intent
