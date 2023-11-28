@@ -1,5 +1,6 @@
 const express = require('express')
 const cors = require('cors')
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 const app = express()
@@ -36,10 +37,36 @@ async function run() {
         const upcommingcollection = database.collection("upcomings");
         const reviewcollection = database.collection("reviews");
 
+        //jwt pai
+        app.post('/jwt', async (req, res) => {
+            const user = req.body
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
+            console.log('token', token)
+            res.send({ token })
+        })
+        const verifyToken = async (req, res, next) => {
+            console.log("verification token", req.headers.authorization)
+            if (!req.headers.authorization) {
+                console.log('djhdhf')
+                return res.status(401).send({ message: 'forbideen access' })
+            }
+            const token = req.headers.authorization.split(' ')[1]
+            //console.log(token)
+            jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+                if (err) {
+                    console.log('no')
+                    return res.status(401).send({ message: 'forbideen access' })
+                }
+                req.decoded = decoded;
+                console.log('yes')
+                next()
+            })
+        }
+
         // user related
         app.post('/users', async (req, res) => {
             const user = req.body
-            console.log(user)
+            //console.log(user)
             const query = { email: user.email }
             const existuser = await usercollection.findOne(query)
             if (existuser) {
@@ -48,8 +75,8 @@ async function run() {
             const result = await usercollection.insertOne(user)
             res.send(result)
         })
-        
-        app.get('/users', async(req,res)=>{
+
+        app.get('/users', async (req, res) => {
             const result = await usercollection.find().toArray()
             res.send(result)
         })
@@ -58,17 +85,13 @@ async function run() {
             const email = req.params.email
             const query = { email: email };
             const result = await usercollection.findOne(query)
-            console.log(result)
             res.send(result)
         })
 
         app.patch('/users/:email', async (req, res) => {
             const user = req.body
-            console.log(user)
             const email = req.params.email
-            console.log(email)
             const filter = { email: email }
-            console.log(filter)
             const updateDoc = {
                 $set: {
                     bagde: user.badge,
@@ -77,17 +100,29 @@ async function run() {
             const result = await usercollection.updateOne(filter, updateDoc)
             res.send(result)
         })
+        app.get('/users/admin/:email', async (req, res) => {
+            const email = req.params.email
+            const query = { email: email }
+            const result = await usercollection.findOne(query)
+            let admin = false;
+
+            if (result) {
+                admin = result?.role === 'admin'
+            }
+            console.log("check admin", admin)
+            res.send({ admin })
+        })
         app.patch('/users/admin/:id', async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) }
             const updateDoc = {
-              $set: {
-                role: `admin`
-              },
+                $set: {
+                    role: `admin`
+                },
             };
             const result = await usercollection.updateOne(filter, updateDoc)
             res.send(result)
-          })
+        })
 
         // meal realated 
         // app.get('/meals', async (req, res) => {
@@ -133,7 +168,6 @@ async function run() {
                 },
             };
             const result = await mealcollection.updateOne(filter, updateDoc)
-            console.log('upco', result)
             res.send(result)
         })
         app.delete('/meals/:id', async (req, res) => {
@@ -157,7 +191,6 @@ async function run() {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
             const result = await upcommingcollection.findOne(query)
-            console.log('see result',result)
             res.send(result)
         })
         app.patch('/upcomings/:id', async (req, res) => {
@@ -170,7 +203,6 @@ async function run() {
                 },
             };
             const result = await upcommingcollection.updateOne(filter, updateDoc)
-            console.log('upco', result)
             res.send(result)
         })
         app.delete('/upcomings/:id', async (req, res) => {
@@ -212,7 +244,6 @@ async function run() {
         //after click on the like, like count of reviewcollection will increase
         app.patch('/likesreview/:id', async (req, res) => {
             const item = req.body
-            console.log('koyta', item)
             const id = req.params.id;
             const filter = { meal_id: id }
             const updateDoc = {
@@ -222,7 +253,6 @@ async function run() {
             };
 
             const result = await reviewcollection.updateMany(filter, updateDoc)
-            console.log("dekhi", result)
             res.send(result)
         })
 
@@ -241,7 +271,7 @@ async function run() {
             res.send(result)
         })
         // for change status pending to delivered
-        app.patch('/change/remeals/:id', async (req, res) => {
+        app.patch('/change/remeals/:id',verifyToken, async (req, res) => {
             const item = req.body
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) }
@@ -267,7 +297,6 @@ async function run() {
             const email = req.params.email
             const query = { request_usermail: email };
             const result = await requestcollection.find(query).toArray()
-            console.log(result)
             res.send(result)
         })
 
@@ -287,7 +316,6 @@ async function run() {
             const query = { meal_id: id };
             const result = await reviewcollection.find(query).toArray()
             res.send(result)
-            console.log(result)
         })
 
         app.delete('/reviews/:id', async (req, res) => {
@@ -307,9 +335,6 @@ async function run() {
         app.post("/create-payment-intent", async (req, res) => {
             const { price } = req.body;
             const amount = price * 100
-
-            // const amount = parseInt(price * 100)
-            console.log(amount, "inside the intent")
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: amount,
                 currency: "usd",
