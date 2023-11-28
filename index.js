@@ -157,6 +157,7 @@ async function run() {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
             const result = await upcommingcollection.findOne(query)
+            console.log('see result',result)
             res.send(result)
         })
         app.patch('/upcomings/:id', async (req, res) => {
@@ -170,6 +171,12 @@ async function run() {
             };
             const result = await upcommingcollection.updateOne(filter, updateDoc)
             console.log('upco', result)
+            res.send(result)
+        })
+        app.delete('/upcomings/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await upcommingcollection.deleteOne(query)
             res.send(result)
         })
 
@@ -233,6 +240,19 @@ async function run() {
             const result = await requestcollection.updateMany(filter, updateDoc)
             res.send(result)
         })
+        // for change status pending to delivered
+        app.patch('/change/remeals/:id', async (req, res) => {
+            const item = req.body
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const updateDoc = {
+                $set: {
+                    status: item.status,
+                },
+            };
+            const result = await requestcollection.updateMany(filter, updateDoc)
+            res.send(result)
+        })
 
         app.post('/reqmeals', async (req, res) => {
             const user = req.body
@@ -271,6 +291,12 @@ async function run() {
         })
 
         app.delete('/reviews/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await reviewcollection.deleteOne(query)
+            res.send(result)
+        })
+        app.delete('/admin/reviews/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
             const result = await reviewcollection.deleteOne(query)
